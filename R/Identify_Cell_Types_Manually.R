@@ -55,7 +55,22 @@ for(i in 1:length(marker.list)){
     print(paste0(i,":",length(marker.list)))
     dev.off()
 }
-
+# dot plot
+m <- marker.list
+markers.to.plot <- c(m$Acinar_cells,m$Alpha_cells,m$B_cells[1:3],
+                     m$Beta_cells[1:4],m$Delta_cells,m$Ductal_cells,
+                     m$Endothelial_cells[c(1,6,9)],
+                     m$Epithelial_cells[1:2],m$Fibroblasts[1:2],
+                     m$Gamma_cells,m$Macrophages[c(1,3)],
+                     m$Monocytes[1:2],m$NK_cells[5],
+                     m$T_cells[2:5])
+markers.to.plot <- MouseGenes(object, markers.to.plot, unique =T)
+jpeg(paste0(path,"DotPlot.jpeg"),
+     units="in", width=10, height=7,res=600)
+DotPlot(object, genes.plot = rev(markers.to.plot),
+        cols.use = c("blue","red"), x.lab.rot = T, plot.legend = F,
+        dot.scale = 8, do.return = T)
+dev.off()
 #====== 2.3 manually label ==========================================
 object <- SetAllIdent(object, id = "res.0.6")
 table(object@ident)
@@ -183,3 +198,32 @@ barplot(Freq, main="Total numbers of each female samples",
         xlab="samples", ylab="Cell numbers",
         col = manual.color)
 dev.off()
+
+
+##############################
+# subset Seurat
+###############################
+table(object@meta.data$orig.ident)
+table(object@ident)
+object <- SetAllIdent(object = object, id = "manual")
+
+df_samples <- readxl::read_excel("doc/20181204_sample_info.xlsx")
+colnames(df_samples) <- colnames(df_samples) %>% tolower
+markers <- c(m$Alpha_cells,
+            m$Beta_cells[1:4],m$Delta_cells,
+            m$Gamma_cells)
+
+markers <- MouseGenes(object,"GIPR")
+tests <- paste0("test",1:2)
+for(test in tests){
+    sample_n = which(df_samples$tests %in% test)
+    print(samples <- unique(df_samples$sample[sample_n]))
+    
+    cell.use <- rownames(object@meta.data)[object@meta.data$orig.ident %in% samples]
+    subset.object <- SubsetData(object, cells.use = cell.use)
+    
+    SplitSingleFeaturePlot(subset.object,group.by = "ident",split.by = "conditions",
+                           select.plots = c(2,1),
+                           no.legend = T,label.size=3,do.print =T,markers = markers,
+                           threshold = 0.1)
+}
